@@ -135,4 +135,15 @@ satoshi.sendMoney(50, bob.publicKey);
 bob.sendMoney(23, alice.publicKey);
 alice.sendMoney(5, bob.publicKey);
 
+// Creating an invalid transaction by using an incorrect signature
+const invalidTransaction = new Transaction(10, satoshi.publicKey, alice.publicKey);
+const sign = crypto.createSign('SHA256');
+sign.update(invalidTransaction.toString()).end();
+
+// Using the wrong private key to sign the transaction
+const invalidSignature = sign.sign(bob.privateKey);  // Using Bob's private key instead of Satoshi's
+
+// Trying to add the invalid transaction to the blockchain
+Chain.instance.addBlock(invalidTransaction, satoshi.publicKey, invalidSignature);
+
 console.log(Chain.instance);
