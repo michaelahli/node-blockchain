@@ -52,28 +52,33 @@ class Chain {
 
   // Proof of work system
   mine(nonce: number, transaction: Transaction, senderPublicKey: string, signature: Buffer) {
-    let solution = 1;
+    const targetDifficulty = '00000'; // Example difficulty target (leading zeros)
+
+    let solution: string;
+    let isValidSolution = false;
     console.log('⛏️  mining...')
 
-    while (true) {
-      const hash = crypto.createHash('MD5');
-      hash.update((nonce + solution).toString()).end();
-      const attempt = hash.digest('hex');
+    while (!isValidSolution) {
+      const hash = crypto.createHash('sha256');
+      hash.update(`${nonce}${transaction.toString()}`).end();
+      solution = hash.digest('hex');
 
-      if (attempt.substr(0, 4) === '0000') {
+      if (solution.startsWith(targetDifficulty)) {
         const verify = crypto.createVerify('SHA256');
         verify.update(transaction.toString());
 
         const isValid = verify.verify(senderPublicKey, signature);
 
         if (isValid) {
-          console.log(`Solved: ${solution}`);
-          return solution;
+          isValidSolution = true;
+          console.log(`Solved: ${nonce}`);
         }
       }
 
-      solution += 1;
+      nonce++; // Increment nonce for next iteration
     }
+
+    return nonce; // Return the valid nonce
   }
 
   // Add a new block to the chain if valid signature & proof of work is complete
