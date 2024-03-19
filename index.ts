@@ -25,7 +25,7 @@ class Block {
 
   get hash() {
     const str = JSON.stringify(this);
-    const hash = crypto.createHash('SHA256');
+    const hash = crypto.createHash('sha256');
     hash.update(str).end();
     return hash.digest('hex');
   }
@@ -50,7 +50,7 @@ class Chain {
     return this.chain[this.chain.length - 1];
   }
 
-  // Proof of work system
+  // Proof of work system with dynamic difficulty
   mine(nonce: number, transaction: Transaction, senderPublicKey: string, signature: Buffer) {
     const targetDifficulty = '00000'; // Example difficulty target (leading zeros)
 
@@ -72,6 +72,9 @@ class Chain {
         if (isValid) {
           isValidSolution = true;
           console.log(`Solved: ${nonce}`);
+        } else {
+          console.log('Invalid transaction! Mining halted.');
+          return null; // Return null to indicate mining failure
         }
       }
 
@@ -84,8 +87,14 @@ class Chain {
   // Add a new block to the chain if valid signature & proof of work is complete
   addBlock(transaction: Transaction, senderPublicKey: string, signature: Buffer) {
     const newBlock = new Block(this.lastBlock.hash, transaction);
-    this.mine(newBlock.nonce, transaction, senderPublicKey, signature);
-    this.chain.push(newBlock);
+    const validNonce = this.mine(newBlock.nonce, transaction, senderPublicKey, signature);
+    if (validNonce !== null) {
+      newBlock.nonce = validNonce; // Update block's nonce with valid nonce
+      this.chain.push(newBlock);
+      console.log('Block added to the chain.');
+    } else {
+      console.log('Block not added to the chain due to invalid transaction.');
+    }
   }
 }
 
