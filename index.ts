@@ -3,10 +3,10 @@ import * as crypto from 'crypto';
 // Transfer of funds between two wallets
 class Transaction {
   constructor(
-    public amount: number, 
+    public amount: number,
     public payer: string, // public key
     public payee: string // public key
-  ) {}
+  ) { }
 
   toString() {
     return JSON.stringify(this);
@@ -15,14 +15,13 @@ class Transaction {
 
 // Individual block on the chain
 class Block {
-
   public nonce = Math.round(Math.random() * 999999999);
 
   constructor(
-    public prevHash: string, 
-    public transaction: Transaction, 
+    public prevHash: string,
+    public transaction: Transaction,
     public ts = Date.now()
-  ) {}
+  ) { }
 
   get hash() {
     const str = JSON.stringify(this);
@@ -31,7 +30,6 @@ class Block {
     return hash.digest('hex');
   }
 }
-
 
 // The blockchain
 class Chain {
@@ -53,20 +51,25 @@ class Chain {
   }
 
   // Proof of work system
-  mine(nonce: number) {
+  mine(nonce: number, transaction: Transaction, senderPublicKey: string, signature: Buffer) {
     let solution = 1;
     console.log('⛏️  mining...')
 
-    while(true) {
-
+    while (true) {
       const hash = crypto.createHash('MD5');
       hash.update((nonce + solution).toString()).end();
-
       const attempt = hash.digest('hex');
 
-      if(attempt.substr(0,4) === '0000'){
-        console.log(`Solved: ${solution}`);
-        return solution;
+      if (attempt.substr(0, 4) === '0000') {
+        const verify = crypto.createVerify('SHA256');
+        verify.update(transaction.toString());
+
+        const isValid = verify.verify(senderPublicKey, signature);
+
+        if (isValid) {
+          console.log(`Solved: ${solution}`);
+          return solution;
+        }
       }
 
       solution += 1;
@@ -75,18 +78,10 @@ class Chain {
 
   // Add a new block to the chain if valid signature & proof of work is complete
   addBlock(transaction: Transaction, senderPublicKey: string, signature: Buffer) {
-    const verify = crypto.createVerify('SHA256');
-    verify.update(transaction.toString());
-
-    const isValid = verify.verify(senderPublicKey, signature);
-
-    if (isValid) {
-      const newBlock = new Block(this.lastBlock.hash, transaction);
-      this.mine(newBlock.nonce);
-      this.chain.push(newBlock);
-    }
+    const newBlock = new Block(this.lastBlock.hash, transaction);
+    this.mine(newBlock.nonce, transaction, senderPublicKey, signature);
+    this.chain.push(newBlock);
   }
-
 }
 
 // Wallet gives a user a public/private keypair
@@ -111,7 +106,7 @@ class Wallet {
     const sign = crypto.createSign('SHA256');
     sign.update(transaction.toString()).end();
 
-    const signature = sign.sign(this.privateKey); 
+    const signature = sign.sign(this.privateKey);
     Chain.instance.addBlock(transaction, this.publicKey, signature);
   }
 }
@@ -126,6 +121,4 @@ satoshi.sendMoney(50, bob.publicKey);
 bob.sendMoney(23, alice.publicKey);
 alice.sendMoney(5, bob.publicKey);
 
-console.log(Chain.instance)
-
-
+console.log(Chain.instance);
